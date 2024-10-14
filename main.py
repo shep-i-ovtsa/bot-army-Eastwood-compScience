@@ -1,31 +1,22 @@
 finch.start_finch()
 Rid = 0
 radio.set_group(0)
-phase = "space"
-finch.start_finch()
-spacing = 10
+phase = "id"
+spacing = 15
 speed = 50
 #trust i have no idea how to use classes i watched a few tutorials and now im praying i understood
-class Formation:
-    def __init__(self, id):
-        self.len = finch.get_distance()
-        self.id = Rid
+def space():
+    if finch.get_distance() <spacing:
+        finch.set_move(MoveDir.FORWARD,finch.get_distance() - spacing, speed)
+    else:
+        finch.set_move(MoveDir.BACKWARD,spacing - finch.get_distance(), speed)
 
-    def organize(self):
-        if self.len < spacing:
-            finch.set_move(MoveDir.FORWARD,self.len - spacing, speed)
-        else:
-            finch.set_move(MoveDir.BACKWARD,spacing - self.len, speed)
-
-    def set_turn_and_move(self, turn_dir, move_distance):
-        finch.set_turn(turn_dir, 90, speed)
-        finch.set_move(MoveDir.FORWARD, move_distance, speed)
-
-def formation(len,id):
+def formation():
     # organize goes first
-    if id == 0:
+    if Rid == 0:
         return
-    if id%2 ==0:
+    if Rid%2 ==0:
+        control.wait_micros(2000000)
         finch.set_move(MoveDir.FORWARD, spacing, speed)
         finch.set_turn(RLDir.RIGHT, 90, speed)
         finch.set_move(MoveDir.FORWARD, spacing, speed)
@@ -35,44 +26,152 @@ def formation(len,id):
         finch.set_turn(RLDir.LEFT, 90, speed)
         finch.set_move(MoveDir.FORWARD, spacing, speed)
         finch.set_turn(RLDir.RIGHT, 90, speed)
-        
-    if (id%2 ==0 and id!= 1 and id!=2):
-        finch.set_turn(RLDir.RIGHT, 90, speed)
-        finch.set_move(MoveDir.FORWARD, spacing*((id-2)/2), speed)
-        finch.set_turn(RLDir.LEFT, 90, speed)
-    elif id%2 == 1 and id!= 1 or 2:
-        finch.set_turn(RLDir.LEFT, 90, speed)
-        finch.set_move(MoveDir.FORWARD, spacing*((id-1)/2), speed)
-        finch.set_turn(RLDir.RIGHT, 90, speed)
 
-    def attack(id):
-        pass# circle an object when the formation reaches a desired distance
-class MusicPlayer:
-    def __init__(self, notes):
+
+
+def attack():
+    basic.show_leds("""
+    # . . . #
+    . # . # .
+    . # . # .
+    . . # . .
+    . # . # .
+    """)
+    if Rid == 0:
+        pass
+    else:
+        finch.set_move(MoveDir.FORWARD, spacing, speed)# circle an object when the formation reaches a desired distance
+        if Rid %2 == 0:
+            finch.set_turn(RLDir.LEFT, 45, speed)
+            space()
+        else:
+            finch.set_turn(RLDir.RIGHT, 45, speed)
+            space()
+    finch.set_beak(100, 0, 0)
+
+    while phase == "attack":
+        music.stop_all_sounds()
+        music.play(music.tone_playable(Note.G4, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
+        if phase != "attack":
+            finch.set_beak(0, 100, 0)
+            music.stop_all_sounds()
+            if Rid %2 == 0:
+                finch.set_turn(RLDir.Right, 45, speed)
+            else:
+                finch.set_turn(RLDir.Left, 45, speed)
+            if Rid != 0:
+                finch.set_move(MoveDir.BACKWARD, spacing*2, speed)
+            break
+        finch.set_move(MoveDir.FORWARD, spacing*.90, speed)
+        music.play(music.tone_playable(Note.C3, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
+        music.play(music.tone_playable(Note.G4, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
+        music.play(music.tone_playable(Note.C3, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
+        music.play(music.tone_playable(Note.G4, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
+        control.wait_micros(100000)
+        music.play(music.tone_playable(Note.G4, music.beat(BeatFraction.EIGHTH)), music.PlaybackMode.UNTIL_DONE)
+        music.play(music.tone_playable(Note.G4, music.beat(BeatFraction.EIGHTH)), music.PlaybackMode.UNTIL_DONE)
+        space()
+        control.wait_micros(100000)
+
+
+
+
+def invert():
+    finch.set_turn(RLDir.RIGHT, 180, speed)
+    if Rid == 0:
+        finch.set_move(MoveDir.FORWARD, spacing+16, speed)
+
+
+def march():
+    finch.set_beak(0, 100, 0)
+    treble = Speaker(Music)
+    bass = Speaker(Music2)
+    if Rid == 1:
+        treble.play_notes(250)
+    elif Rid == 2:
+        bass.play_notes(250)
+    for l in range(5):
+        for i in range(15):
+            # Check if the phase has changed during the march
+            if phase != "march":
+                treble.stop()
+                bass.stop()
+                return  # Exit march if phase changes
+            if Rid == 0 and finch.get_distance() < 20:
+                radio.send_string("attack")
+                attack()
+            else:
+                finch.set_move(MoveDir.FORWARD, 10, speed)
+        invert()
+
+
+
+class Speaker:
+    def __init__(self, notes):#oh wow i wrote this...damn guess the youtube tutorials payed off, wish i remembered to take notes
         self.notes = notes
+        self.is_playing = False
+        self.filternote = []
+        for i in self.notes:
+            if i >= 100:
+                self.filternote.append(i)
 
     def play_notes(self, delay):
-        for note in self.notes:
-            music.ring_tone(note)
-            control.wait_micros(delay * 1000)  # Play the frequency directly
+        self.is_playing = True
+        for note in self.filternote:
+            if phase == "attack":  # Check for stop
+                self.stop()
+                return
+            music.ring_tone(note*1.5)
+            control.wait_micros(delay * 1000)
+        self.stop()
+
+    def stop(self):
         music.stop_all_sounds()
-# Initialize music notes
-Music = [64.99, 75.83, 89.83, 99.80]  # Your music notes
-Music2 = [90.36, 79.96, 175.72, 56.37]  # Additional music notes
+        self.is_playing = False
+phase = "id"
+
+Music = [0]#left frequencies go here
+Music2 = [0]#right frequencies go here
+
+
 
 def on_button_pressed_a():
     global Rid
-    if phase == "space":
+    if phase == "id":
         Rid += 1
         basic.show_number(Rid)
-
+    
 input.on_button_pressed(Button.A, on_button_pressed_a)
 
-def on_button_pressed_b():
-    basic.clear_screen()
-    treble = MusicPlayer(Music)
-    treble.play_notes(250)
-    bass = MusicPlayer(Music2)
-    bass.play_notes(250)
 
+
+def on_button_pressed_b():
+    if Rid == 0:
+        if phase == "id":
+            phase = "space"
+            radio.send_string("space")
+        elif phase == "space":
+            radio.send_string("formation")
+            phase = "formation"
+        elif phase == "formation":
+            radio.send_string("march")
+            phase = "march"
+            march()
+        elif phase == "march" or "attack":
+            radio.send_string("hold")
+            phase = "hold"
 input.on_button_pressed(Button.B, on_button_pressed_b)
+
+def on_received_string(receivedString):
+    phase = receivedString
+    if phase == "space":
+        space()
+    elif phase == "formation":
+        formation()
+    elif phase == "march":
+        march()
+    elif phase == "attack":
+        attack()
+    elif phase == "hold":
+        basic.clear_screen()
+radio.on_received_string(on_received_string)

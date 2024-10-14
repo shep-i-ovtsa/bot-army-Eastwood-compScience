@@ -1,42 +1,27 @@
 finch.startFinch()
 let Rid = 0
 radio.setGroup(0)
-let phase = "space"
-finch.startFinch()
-let spacing = 10
+let phase = "id"
+let spacing = 15
 let speed = 50
 // trust i have no idea how to use classes i watched a few tutorials and now im praying i understood
-class Formation {
-    len: number
-    id: number
-    constructor(id: any) {
-        this.len = finch.getDistance()
-        this.id = Rid
-    }
-    
-    public organize() {
-        if (this.len < spacing) {
-            finch.setMove(MoveDir.Forward, this.len - spacing, speed)
-        } else {
-            finch.setMove(MoveDir.Backward, spacing - this.len, speed)
-        }
-        
-    }
-    
-    public set_turn_and_move(turn_dir: number, move_distance: number) {
-        finch.setTurn(turn_dir, 90, speed)
-        finch.setMove(MoveDir.Forward, move_distance, speed)
+function space() {
+    if (finch.getDistance() < spacing) {
+        finch.setMove(MoveDir.Forward, finch.getDistance() - spacing, speed)
+    } else {
+        finch.setMove(MoveDir.Backward, spacing - finch.getDistance(), speed)
     }
     
 }
 
-function formation(len: any, id: number) {
+function formation() {
     //  organize goes first
-    if (id == 0) {
+    if (Rid == 0) {
         return
     }
     
-    if (id % 2 == 0) {
+    if (Rid % 2 == 0) {
+        control.waitMicros(2000000)
         finch.setMove(MoveDir.Forward, spacing, speed)
         finch.setTurn(RLDir.Right, 90, speed)
         finch.setMove(MoveDir.Forward, spacing, speed)
@@ -47,57 +32,189 @@ function formation(len: any, id: number) {
         finch.setTurn(RLDir.Right, 90, speed)
     }
     
-    if (id % 2 == 0 && id != 1 && id != 2) {
-        finch.setTurn(RLDir.Right, 90, speed)
-        finch.setMove(MoveDir.Forward, spacing * ((id - 2) / 2), speed)
-        finch.setTurn(RLDir.Left, 90, speed)
-    } else if (id % 2 == 1 && id != 1 || 2) {
-        finch.setTurn(RLDir.Left, 90, speed)
-        finch.setMove(MoveDir.Forward, spacing * ((id - 1) / 2), speed)
-        finch.setTurn(RLDir.Right, 90, speed)
-    }
-    
-    function attack(id: any) {
+}
+
+function attack() {
+    basic.showLeds(`
+    # . . . #
+    . # . # .
+    . # . # .
+    . . # . .
+    . # . # .
+    `)
+    if (Rid == 0) {
+        
+    } else {
+        finch.setMove(MoveDir.Forward, spacing, speed)
+        //  circle an object when the formation reaches a desired distance
+        if (Rid % 2 == 0) {
+            finch.setTurn(RLDir.Left, 45, speed)
+            space()
+        } else {
+            finch.setTurn(RLDir.Right, 45, speed)
+            space()
+        }
         
     }
     
+    finch.setBeak(100, 0, 0)
+    while (phase == "attack") {
+        music.stopAllSounds()
+        music.play(music.tonePlayable(Note.G4, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)
+        if (phase != "attack") {
+            finch.setBeak(0, 100, 0)
+            music.stopAllSounds()
+            if (Rid % 2 == 0) {
+                finch.setTurn(RLDir.Right, 45, speed)
+            } else {
+                finch.setTurn(RLDir.Left, 45, speed)
+            }
+            
+            if (Rid != 0) {
+                finch.setMove(MoveDir.Backward, spacing * 2, speed)
+            }
+            
+            break
+        }
+        
+        finch.setMove(MoveDir.Forward, spacing * .90, speed)
+        music.play(music.tonePlayable(Note.C3, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)
+        music.play(music.tonePlayable(Note.G4, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)
+        music.play(music.tonePlayable(Note.C3, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)
+        music.play(music.tonePlayable(Note.G4, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)
+        control.waitMicros(100000)
+        music.play(music.tonePlayable(Note.G4, music.beat(BeatFraction.Eighth)), music.PlaybackMode.UntilDone)
+        music.play(music.tonePlayable(Note.G4, music.beat(BeatFraction.Eighth)), music.PlaybackMode.UntilDone)
+        space()
+        control.waitMicros(100000)
+    }
 }
 
-//  circle an object when the formation reaches a desired distance
-class MusicPlayer {
-    notes: number[]
-    constructor(notes: number[]) {
+function invert() {
+    finch.setTurn(RLDir.Right, 180, speed)
+    if (Rid == 0) {
+        finch.setMove(MoveDir.Forward, spacing + 16, speed)
+    }
+    
+}
+
+function march() {
+    finch.setBeak(0, 100, 0)
+    let treble = new Speaker(Music)
+    let bass = new Speaker(Music2)
+    if (Rid == 1) {
+        treble.play_notes(250)
+    } else if (Rid == 2) {
+        bass.play_notes(250)
+    }
+    
+    for (let l = 0; l < 5; l++) {
+        for (let i = 0; i < 15; i++) {
+            //  Check if the phase has changed during the march
+            if (phase != "march") {
+                treble.stop()
+                bass.stop()
+                return
+            }
+            
+            //  Exit march if phase changes
+            if (Rid == 0 && finch.getDistance() < 20) {
+                radio.sendString("attack")
+                attack()
+            } else {
+                finch.setMove(MoveDir.Forward, 10, speed)
+            }
+            
+        }
+        invert()
+    }
+}
+
+class Speaker {
+    notes: any[]
+    is_playing: boolean
+    filternote: number[]
+    constructor(notes: any[]) {
+        // oh wow i wrote this...damn guess the youtube tutorials payed off, wish i remembered to take notes
         this.notes = notes
+        this.is_playing = false
+        this.filternote = []
+        for (let i of this.notes) {
+            if (i >= 100) {
+                this.filternote.push(i)
+            }
+            
+        }
     }
     
     public play_notes(delay: number) {
-        for (let note of this.notes) {
-            music.ringTone(note)
+        this.is_playing = true
+        for (let note of this.filternote) {
+            if (phase == "attack") {
+                //  Check for stop
+                this.stop()
+                return
+            }
+            
+            music.ringTone(note * 1.5)
             control.waitMicros(delay * 1000)
         }
-        //  Play the frequency directly
+        this.stop()
+    }
+    
+    public stop() {
         music.stopAllSounds()
+        this.is_playing = false
     }
     
 }
 
-//  Initialize music notes
-let Music = [64.99, 75.83, 89.83, 99.80]
-//  Your music notes
-let Music2 = [90.36, 79.96, 175.72, 56.37]
-//  Additional music notes
+phase = "id"
+let Music = [0]
+// left frequencies go here
+let Music2 = [0]
+// right frequencies go here
 input.onButtonPressed(Button.A, function on_button_pressed_a() {
     
-    if (phase == "space") {
+    if (phase == "id") {
         Rid += 1
         basic.showNumber(Rid)
     }
     
 })
 input.onButtonPressed(Button.B, function on_button_pressed_b() {
-    basic.clearScreen()
-    let treble = new MusicPlayer(Music)
-    treble.play_notes(250)
-    let bass = new MusicPlayer(Music2)
-    bass.play_notes(250)
+    let phase: string;
+    if (Rid == 0) {
+        if (phase == "id") {
+            phase = "space"
+            radio.sendString("space")
+        } else if (phase == "space") {
+            radio.sendString("formation")
+            phase = "formation"
+        } else if (phase == "formation") {
+            radio.sendString("march")
+            phase = "march"
+            march()
+        } else if (phase == "march" || "attack") {
+            radio.sendString("hold")
+            phase = "hold"
+        }
+        
+    }
+    
+})
+radio.onReceivedString(function on_received_string(receivedString: string) {
+    let phase = receivedString
+    if (phase == "space") {
+        space()
+    } else if (phase == "formation") {
+        formation()
+    } else if (phase == "march") {
+        march()
+    } else if (phase == "attack") {
+        attack()
+    } else if (phase == "hold") {
+        basic.clearScreen()
+    }
+    
 })
