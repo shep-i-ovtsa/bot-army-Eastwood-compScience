@@ -35,6 +35,7 @@ function formation() {
 }
 
 function attack() {
+    
     basic.showLeds(`
     # . . . #
     . # . # .
@@ -61,7 +62,7 @@ function attack() {
     while (phase == "attack") {
         music.stopAllSounds()
         music.play(music.tonePlayable(Note.G4, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)
-        if (phase != "attack") {
+        if (input.buttonIsPressed(Button.B)) {
             finch.setBeak(0, 100, 0)
             music.stopAllSounds()
             if (Rid % 2 == 0) {
@@ -74,7 +75,7 @@ function attack() {
                 finch.setMove(MoveDir.Backward, spacing * 2, speed)
             }
             
-            break
+            return
         }
         
         finch.setMove(MoveDir.Forward, spacing * .90, speed)
@@ -99,6 +100,7 @@ function invert() {
 }
 
 function march() {
+    
     finch.setBeak(0, 100, 0)
     let treble = new Speaker(Music)
     let bass = new Speaker(Music2)
@@ -111,14 +113,14 @@ function march() {
     for (let l = 0; l < 5; l++) {
         for (let i = 0; i < 15; i++) {
             //  Check if the phase has changed during the march
-            if (phase != "march") {
+            if (input.buttonIsPressed(Button.B)) {
                 treble.stop()
                 bass.stop()
                 return
             }
             
-            //  Exit march if phase changes
-            if (Rid == 0 && finch.getDistance() < 20) {
+            //  Exit march
+            if (Rid == 0 && finch.getDistance() < 20 && finch.getDistance() > 5) {
                 radio.sendString("attack")
                 attack()
             } else {
@@ -183,7 +185,7 @@ input.onButtonPressed(Button.A, function on_button_pressed_a() {
     
 })
 input.onButtonPressed(Button.B, function on_button_pressed_b() {
-    let phase: string;
+    
     if (Rid == 0) {
         if (phase == "id") {
             phase = "space"
@@ -195,16 +197,15 @@ input.onButtonPressed(Button.B, function on_button_pressed_b() {
             radio.sendString("march")
             phase = "march"
             march()
-        } else if (phase == "march" || "attack") {
-            radio.sendString("hold")
-            phase = "hold"
         }
         
+        basic.showString(phase)
     }
     
 })
 radio.onReceivedString(function on_received_string(receivedString: string) {
-    let phase = receivedString
+    
+    phase = receivedString
     if (phase == "space") {
         space()
     } else if (phase == "formation") {

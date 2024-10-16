@@ -30,6 +30,7 @@ def formation():
 
 
 def attack():
+    global phase
     basic.show_leds("""
     # . . . #
     . # . # .
@@ -52,7 +53,7 @@ def attack():
     while phase == "attack":
         music.stop_all_sounds()
         music.play(music.tone_playable(Note.G4, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
-        if phase != "attack":
+        if input.button_is_pressed(Button.B):
             finch.set_beak(0, 100, 0)
             music.stop_all_sounds()
             if Rid %2 == 0:
@@ -61,7 +62,7 @@ def attack():
                 finch.set_turn(RLDir.Left, 45, speed)
             if Rid != 0:
                 finch.set_move(MoveDir.BACKWARD, spacing*2, speed)
-            break
+            return
         finch.set_move(MoveDir.FORWARD, spacing*.90, speed)
         music.play(music.tone_playable(Note.C3, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
         music.play(music.tone_playable(Note.G4, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
@@ -83,6 +84,7 @@ def invert():
 
 
 def march():
+    global phase
     finch.set_beak(0, 100, 0)
     treble = Speaker(Music)
     bass = Speaker(Music2)
@@ -92,12 +94,13 @@ def march():
         bass.play_notes(250)
     for l in range(5):
         for i in range(15):
+
             # Check if the phase has changed during the march
-            if phase != "march":
+            if input.button_is_pressed(Button.B):
                 treble.stop()
                 bass.stop()
-                return  # Exit march if phase changes
-            if Rid == 0 and finch.get_distance() < 20:
+                return  # Exit march
+            if Rid == 0 and finch.get_distance() < 20 and finch.get_distance() > 5:
                 radio.send_string("attack")
                 attack()
             else:
@@ -146,6 +149,7 @@ input.on_button_pressed(Button.A, on_button_pressed_a)
 
 
 def on_button_pressed_b():
+    global phase
     if Rid == 0:
         if phase == "id":
             phase = "space"
@@ -157,12 +161,11 @@ def on_button_pressed_b():
             radio.send_string("march")
             phase = "march"
             march()
-        elif phase == "march" or "attack":
-            radio.send_string("hold")
-            phase = "hold"
+        basic.show_string(phase)
 input.on_button_pressed(Button.B, on_button_pressed_b)
 
 def on_received_string(receivedString):
+    global phase
     phase = receivedString
     if phase == "space":
         space()
