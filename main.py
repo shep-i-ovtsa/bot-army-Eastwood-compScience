@@ -51,6 +51,8 @@ def attack():
     finch.set_beak(100, 0, 0)
 
     while phase == "attack":
+        treble.stop()
+        bass.stop()  
         music.stop_all_sounds()
         music.play(music.tone_playable(Note.G4, music.beat(BeatFraction.WHOLE)), music.PlaybackMode.UNTIL_DONE)
         if input.button_is_pressed(Button.B):
@@ -86,12 +88,7 @@ def invert():
 def march():
     global phase
     finch.set_beak(0, 100, 0)
-    treble = Speaker(Music)
-    bass = Speaker(Music2)
-    if Rid == 1:
-        treble.play_notes(250)
-    elif Rid == 2:
-        bass.play_notes(250)
+    
     for l in range(5):
         for i in range(15):
 
@@ -99,6 +96,8 @@ def march():
             if input.button_is_pressed(Button.B):
                 treble.stop()
                 bass.stop()
+                phase = "hold"
+                radio.send_string(phase)
                 return  # Exit march
             if Rid == 0 and finch.get_distance() < 20 and finch.get_distance() > 5:
                 radio.send_string("attack")
@@ -153,20 +152,20 @@ def on_button_pressed_b():
     if Rid == 0:
         if phase == "id":
             phase = "space"
-            radio.send_string("space")
         elif phase == "space":
-            radio.send_string("formation")
             phase = "formation"
         elif phase == "formation":
-            radio.send_string("march")
             phase = "march"
-            march()
+        radio.send_string(phase)
         basic.show_string(phase)
+        if phase == "march":
+            march()
 input.on_button_pressed(Button.B, on_button_pressed_b)
 
 def on_received_string(receivedString):
     global phase
     phase = receivedString
+    basic.show_string(phase)
     if phase == "space":
         space()
     elif phase == "formation":
@@ -178,3 +177,13 @@ def on_received_string(receivedString):
     elif phase == "hold":
         basic.clear_screen()
 radio.on_received_string(on_received_string)
+treble = Speaker(Music)
+bass = Speaker(Music2)
+def background():
+    if phase == "march":
+        
+        if Rid == 1:
+            treble.play_notes(250)
+        elif Rid == 2:
+            bass.play_notes(250)
+control.in_background(background)

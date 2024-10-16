@@ -60,6 +60,8 @@ function attack() {
     
     finch.setBeak(100, 0, 0)
     while (phase == "attack") {
+        treble.stop()
+        bass.stop()
         music.stopAllSounds()
         music.play(music.tonePlayable(Note.G4, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)
         if (input.buttonIsPressed(Button.B)) {
@@ -102,20 +104,14 @@ function invert() {
 function march() {
     
     finch.setBeak(0, 100, 0)
-    let treble = new Speaker(Music)
-    let bass = new Speaker(Music2)
-    if (Rid == 1) {
-        treble.play_notes(250)
-    } else if (Rid == 2) {
-        bass.play_notes(250)
-    }
-    
     for (let l = 0; l < 5; l++) {
         for (let i = 0; i < 15; i++) {
             //  Check if the phase has changed during the march
             if (input.buttonIsPressed(Button.B)) {
                 treble.stop()
                 bass.stop()
+                phase = "hold"
+                radio.sendString(phase)
                 return
             }
             
@@ -189,23 +185,25 @@ input.onButtonPressed(Button.B, function on_button_pressed_b() {
     if (Rid == 0) {
         if (phase == "id") {
             phase = "space"
-            radio.sendString("space")
         } else if (phase == "space") {
-            radio.sendString("formation")
             phase = "formation"
         } else if (phase == "formation") {
-            radio.sendString("march")
             phase = "march"
+        }
+        
+        radio.sendString(phase)
+        basic.showString(phase)
+        if (phase == "march") {
             march()
         }
         
-        basic.showString(phase)
     }
     
 })
 radio.onReceivedString(function on_received_string(receivedString: string) {
     
     phase = receivedString
+    basic.showString(phase)
     if (phase == "space") {
         space()
     } else if (phase == "formation") {
@@ -216,6 +214,19 @@ radio.onReceivedString(function on_received_string(receivedString: string) {
         attack()
     } else if (phase == "hold") {
         basic.clearScreen()
+    }
+    
+})
+let treble = new Speaker(Music)
+let bass = new Speaker(Music2)
+control.inBackground(function background() {
+    if (phase == "march") {
+        if (Rid == 1) {
+            treble.play_notes(250)
+        } else if (Rid == 2) {
+            bass.play_notes(250)
+        }
+        
     }
     
 })
